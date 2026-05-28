@@ -4,30 +4,17 @@
 
 package frc.robot;
 
-import static frc.robot.Constants.DriveConstants.DRIVE_MOTOR_CURRENT_LIMIT;
-import static frc.robot.Constants.DriveConstants.GEAR_RATIO;
-import static frc.robot.Constants.DriveConstants.LEFT_FOLLOWER_ID;
-import static frc.robot.Constants.DriveConstants.LEFT_LEADER_ID;
-import static frc.robot.Constants.DriveConstants.RIGHT_FOLLOWER_ID;
-import static frc.robot.Constants.DriveConstants.RIGHT_LEADER_ID;
-import static frc.robot.Constants.DriveConstants.WHEEL_DIAMETER_METERS;
-import static frc.robot.Constants.DriveConstants.METERS_PER_ROTATION;
+
 import static frc.robot.Constants.OperatorConstants.DRIVER_CONTROLLER_PORT;
 import static frc.robot.Constants.OperatorConstants.DRIVE_DEADBAND;
 import static frc.robot.Constants.OperatorConstants.DRIVE_SCALING;
 import static frc.robot.Constants.OperatorConstants.ROTATION_SCALING;
 
-import com.revrobotics.PersistMode;
-import com.revrobotics.ResetMode;
-import com.revrobotics.RelativeEncoder;
-import com.revrobotics.spark.SparkLowLevel.MotorType;
-import com.revrobotics.spark.SparkMax;
-import com.revrobotics.spark.config.SparkMaxConfig;
+
 
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.XboxController;
-import edu.wpi.first.wpilibj.drive.DifferentialDrive;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 /**
@@ -44,18 +31,9 @@ public class Robot extends TimedRobot {
   // --- Controls ----
   private XboxController controller;
 
-  // --- Motors ---
-  private final SparkMax leftLeader;
-  private final SparkMax leftFollower;
-  private final SparkMax rightLeader;
-  private final SparkMax rightFollower;
+  private final DriveSubsystem m_driveSubsystem;
 
-  private final DifferentialDrive driveSubsystem;
-
-  // --- Encoders ---
-  private final RelativeEncoder leftEncoder;
-  private final RelativeEncoder rightEncoder;
-
+  
   /**
    * This function is run when the robot is first started up and should be used for any
    * initialization code.
@@ -68,39 +46,9 @@ public class Robot extends TimedRobot {
     // initialize controller
     controller = new XboxController(DRIVER_CONTROLLER_PORT);
 
-    // Create brushed motors for a KitBot-style CIM drivetrain
-    leftLeader = new SparkMax(LEFT_LEADER_ID, MotorType.kBrushed);
-    leftFollower = new SparkMax(LEFT_FOLLOWER_ID, MotorType.kBrushed);
-    rightLeader = new SparkMax(RIGHT_LEADER_ID, MotorType.kBrushed);
-    rightFollower = new SparkMax(RIGHT_FOLLOWER_ID, MotorType.kBrushed);
-
-    // Left leader: invert so that positive values drive both sides forward
-    SparkMaxConfig leftLeaderConfig = new SparkMaxConfig();
-    leftLeaderConfig.voltageCompensation(12);
-    leftLeaderConfig.smartCurrentLimit(DRIVE_MOTOR_CURRENT_LIMIT);
-    leftLeaderConfig.inverted(true);
-    leftLeader.configure(leftLeaderConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
-
-    // Right leader: not inverted
-    SparkMaxConfig rightLeaderConfig = new SparkMaxConfig();
-    rightLeaderConfig.voltageCompensation(12);
-    rightLeaderConfig.smartCurrentLimit(DRIVE_MOTOR_CURRENT_LIMIT);
-    rightLeader.configure(rightLeaderConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
-
-    // Followers mirror their respective leaders
-    SparkMaxConfig leftFollowerConfig = new SparkMaxConfig();
-    leftFollowerConfig.follow(leftLeader);
-    leftFollower.configure(leftFollowerConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
-
-    SparkMaxConfig rightFollowerConfig = new SparkMaxConfig();
-    rightFollowerConfig.follow(rightLeader);
-    rightFollower.configure(rightFollowerConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
-
-    // Built-in encoders
-    leftEncoder = leftLeader.getEncoder();
-    rightEncoder = rightLeader.getEncoder();
-
-    driveSubsystem = new DifferentialDrive(leftLeader, rightLeader);
+    // create drive subsystem
+    m_driveSubsystem = new DriveSubsystem();
+    
   }
 
   /**
@@ -128,7 +76,7 @@ public class Robot extends TimedRobot {
     m_autoSelected = m_chooser.getSelected();
     // m_autoSelected = SmartDashboard.getString("Auto Selector", kDefaultAuto);
     System.out.println("Auto selected: " + m_autoSelected);
-    resetEncoders();
+    m_driveSubsystem.resetEncoders();
   }
 
   /** This function is called periodically during autonomous. */
@@ -137,12 +85,12 @@ public class Robot extends TimedRobot {
     switch (m_autoSelected) {
       case kCustomAuto:
         double targetDistanceMeters = 2.0;
-        double current = getAverageDistanceMeters();
+        double current = m_driveSubsystem.getAverageDistanceMeters();
         if (current < targetDistanceMeters) {
-          driveSubsystem.arcadeDrive(1.0, 0.0);
+          m_driveSubsystem.arcadeDrive(1.0, 0.0);
         }
         else {
-          driveSubsystem.stopMotor();
+          m_driveSubsystem.stopMotor();
         }
         break;
 
@@ -169,7 +117,7 @@ public class Robot extends TimedRobot {
     double xSpeed = forwardBack;
     // Inverted turn mapping requested by driver.
     double zRotation = rotation;
-    driveSubsystem.arcadeDrive(xSpeed, zRotation);
+    m_driveSubsystem.arcadeDrive(xSpeed, zRotation);
   }
 
   /** This function is called once when the robot is disabled. */
@@ -196,33 +144,5 @@ public class Robot extends TimedRobot {
   @Override
   public void simulationPeriodic() {}
 
-  /**
-   * Returns the distance traveled by the left side in meters.
-   * Negated so that forward motion (left motor inverted) gives positive distance.
-   */
-  public double getLeftDistanceMeters() {
-    return -leftEncoder.getPosition() * METERS_PER_ROTATION;
-  }
-
-  /**
-   * Returns the distance traveled by the right side in meters.
-   */
-  public double getRightDistanceMeters() {
-    return rightEncoder.getPosition() * METERS_PER_ROTATION;
-  }
-
-  /**
-   * Returns the average distance traveled by both sides in meters.
-   * Convenient for straight-line distance calculations in auto.
-   */
-  public double getAverageDistanceMeters() {
-    return (getLeftDistanceMeters() + getRightDistanceMeters()) / 2.0;
-  }
-
-  /** Resets both drive encoders to zero. */
-  public void resetEncoders() {
-    leftEncoder.setPosition(0);
-    rightEncoder.setPosition(0);
-  }
-
+  
 }
