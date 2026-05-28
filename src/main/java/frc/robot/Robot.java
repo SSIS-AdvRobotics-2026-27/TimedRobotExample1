@@ -4,13 +4,10 @@
 
 package frc.robot;
 
-
 import static frc.robot.Constants.OperatorConstants.DRIVER_CONTROLLER_PORT;
 import static frc.robot.Constants.OperatorConstants.DRIVE_DEADBAND;
 import static frc.robot.Constants.OperatorConstants.DRIVE_SCALING;
 import static frc.robot.Constants.OperatorConstants.ROTATION_SCALING;
-
-
 
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.wpilibj.TimedRobot;
@@ -31,9 +28,9 @@ public class Robot extends TimedRobot {
   // --- Controls ----
   private XboxController controller;
 
+  // ---- Drive Subsystem --- 
   private final DriveSubsystem m_driveSubsystem;
 
-  
   /**
    * This function is run when the robot is first started up and should be used for any
    * initialization code.
